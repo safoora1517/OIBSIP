@@ -1,0 +1,233 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+# Styling
+sns.set_theme(style="whitegrid", palette="muted")
+plt.rcParams["figure.figsize"] = (10, 5)
+plt.rcParams["font.size"] = 11
+
+# Load Dataset
+df = pd.read_csv(r"C:\Users\HP\Downloads\retail_sales_dataset.csv")
+
+# Convert Date to datetime and create time features
+df["Date"] = pd.to_datetime(df["Date"])
+df["YearMonth"] = df["Date"].dt.to_period("M")
+df["Quarter"] = df["Date"].dt.to_period("Q")
+df["Month_Name"] = df["Date"].dt.month_name()
+df["Day_of_Week"] = df["Date"].dt.day_name()
+
+# Create Age Groups
+df["Age_Group"] = pd.cut(
+    df["Age"],
+    bins=[17, 25, 35, 50, 65],
+    labels=["18-25", "26-35", "36-50", "51-64"],
+)
+
+print(f"Dataset Shape: {df.shape[0]} rows, {df.shape[1]} columns\n")
+
+print("--- Data Types and Non-Null Counts ---")
+print(df.info())
+
+print("\n--- Missing Values Count ---")
+print(df.isnull().sum())
+
+print("\n--- First 5 Rows ---")
+df.head()
+
+# Summary Statistics for Numerical Variables
+num_cols = ["Age", "Quantity", "Price per Unit", "Total Amount"]
+
+stats_df = pd.DataFrame(
+    index=num_cols,
+    columns=["Mean", "Median", "Mode", "Std Dev", "Min", "Max", "IQR"],
+)
+
+for col in num_cols:
+    stats_df.loc[col, "Mean"] = round(df[col].mean(), 2)
+    stats_df.loc[col, "Median"] = round(df[col].median(), 2)
+    stats_df.loc[col, "Mode"] = df[col].mode()[0]
+    stats_df.loc[col, "Std Dev"] = round(df[col].std(), 2)
+    stats_df.loc[col, "Min"] = df[col].min()
+    stats_df.loc[col, "Max"] = df[col].max()
+    stats_df.loc[col, "IQR"] = round(
+        df[col].quantile(0.75) - df[col].quantile(0.25), 2
+    )
+
+stats_df
+
+#Monthly & Quarterly Sales Trends
+fig, axes = plt.subplots(1, 2, figsize=(16, 5))
+
+# Monthly Sales Trend
+monthly_sales = (
+    df.groupby("YearMonth")["Total Amount"].sum().reset_index()
+)
+monthly_sales["YearMonth_str"] = monthly_sales["YearMonth"].astype(str)
+
+sns.lineplot(
+    data=monthly_sales,
+    x="YearMonth_str",
+    y="Total Amount",
+    marker="o",
+    color="#1f77b4",
+    linewidth=2.5,
+    ax=axes[0],
+)
+axes[0].set_title("Monthly Total Sales Revenue", fontweight="bold")
+axes[0].set_xlabel("Month")
+axes[0].set_ylabel("Total Revenue ($)")
+axes[0].tick_params(axis="x", rotation=45)
+
+# Quarterly Sales Trend
+quarterly_sales = (
+    df.groupby("Quarter")["Total Amount"].sum().reset_index()
+)
+quarterly_sales["Quarter_str"] = quarterly_sales["Quarter"].astype(str)
+
+sns.lineplot(
+    data=quarterly_sales,
+    x="Quarter_str",
+    y="Total Amount",
+    marker="s",
+    color="#ff7f0e",
+    linewidth=2.5,
+    ax=axes[1],
+)
+axes[1].set_title("Quarterly Total Sales Revenue", fontweight="bold")
+axes[1].set_xlabel("Quarter")
+axes[1].set_ylabel("Total Revenue ($)")
+
+plt.tight_layout()
+plt.show()
+
+#Gender & Age Group Distribution
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+# Gender Breakdown
+gender_counts = df["Gender"].value_counts()
+axes[0].pie(
+    gender_counts,
+    labels=gender_counts.index,
+    autopct="%1.1f%%",
+    startangle=140,
+    colors=["#5b9bd5", "#ed7d31"],
+    explode=(0.02, 0.02),
+)
+axes[0].set_title("Customer Gender Breakdown", fontweight="bold")
+
+# Age Group Distribution
+sns.countplot(
+    data=df,
+    x="Age_Group",
+    palette="Blues_d",
+    ax=axes[1],
+    order=["18-25", "26-35", "36-50", "51-64"],
+)
+axes[1].set_title("Customer Distribution by Age Group", fontweight="bold")
+axes[1].set_xlabel("Age Bracket")
+axes[1].set_ylabel("Number of Transactions")
+
+for p in axes[1].patches:
+    axes[1].annotate(
+        f"{int(p.get_height())}",
+        (p.get_x() + p.get_width() / 2.0, p.get_height()),
+        ha="center",
+        va="bottom",
+        xytext=(0, 3),
+        textcoords="offset points",
+    )
+
+plt.tight_layout()
+plt.show()
+
+#Total Revenue and Units Sold by Category
+fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+
+# Revenue by Category
+cat_revenue = (
+    df.groupby("Product Category")["Total Amount"]
+    .sum()
+    .sort_values(ascending=False)
+)
+sns.barplot(
+    x=cat_revenue.values,
+    y=cat_revenue.index,
+    palette="viridis",
+    ax=axes[0],
+    orient="h",
+)
+axes[0].set_title("Total Revenue by Product Category", fontweight="bold")
+axes[0].set_xlabel("Total Revenue ($)")
+axes[0].set_ylabel("Product Category")
+
+# Units Sold by Category
+cat_qty = (
+    df.groupby("Product Category")["Quantity"]
+    .sum()
+    .sort_values(ascending=False)
+)
+sns.barplot(
+    x=cat_qty.values,
+    y=cat_qty.index,
+    palette="mako",
+    ax=axes[1],
+    orient="h",
+)
+axes[1].set_title("Total Units Sold by Product Category", fontweight="bold")
+axes[1].set_xlabel("Total Units Sold")
+axes[1].set_ylabel("")
+
+plt.tight_layout()
+plt.show()
+
+#Correlation Heatmap
+plt.figure(figsize=(7, 5))
+corr = df[["Age", "Quantity", "Price per Unit", "Total Amount"]].corr()
+
+sns.heatmap(
+    corr,
+    annot=True,
+    cmap="coolwarm",
+    vmin=-1,
+    vmax=1,
+    fmt=".2f",
+    linewidths=1,
+    square=True,
+)
+plt.title("Correlation Matrix of Numerical Features", fontweight="bold")
+plt.show()
+
+#Spending Heatmap by Category and Demographic Group
+fig, axes = plt.subplots(1, 2, figsize=(16, 5))
+
+# Pivot: Average Total Spend by Category and Age Group
+pivot_age = df.pivot_table(
+    index="Product Category",
+    columns="Age_Group",
+    values="Total Amount",
+    aggfunc="mean",
+)
+sns.heatmap(pivot_age, annot=True, fmt=".1f", cmap="YlGnBu", ax=axes[0])
+axes[0].set_title("Average Spend ($) by Age Group & Category", fontweight="bold")
+
+# Revenue Breakdown: Category by Gender
+pivot_gender = df.pivot_table(
+    index="Product Category",
+    columns="Gender",
+    values="Total Amount",
+    aggfunc="sum",
+)
+pivot_gender.plot(
+    kind="bar",
+    ax=axes[1],
+    color=["#5b9bd5", "#ed7d31"],
+    rot=0,
+)
+axes[1].set_title("Total Revenue ($) by Gender & Category", fontweight="bold")
+axes[1].set_ylabel("Revenue ($)")
+axes[1].legend(title="Gender")
+
+plt.tight_layout()
+plt.show()
