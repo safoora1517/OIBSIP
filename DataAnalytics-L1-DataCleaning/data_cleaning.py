@@ -13,8 +13,8 @@ pd.set_option("display.max_columns", 50)
 # Load dataset (or sample if working on memory-constrained systems)
 # Note: Low_memory=False handles DtypeWarnings on large play-by-play files
 csv_path = os.path.join(
-    "C:\\", "Users", "HP", "OneDrive", "Desktop", "OIBSIP",
-    "DataAnalytics-L1-_DataCleaning", "NFL Play by Play 2009-2016 (v3).csv"
+    os.path.dirname(os.path.abspath(__file__)),
+    "NFL Play by Play 2009-2016 (v3).csv",
 )
 raw_df = pd.read_csv(csv_path, low_memory=False)
 
@@ -240,3 +240,4 @@ print(summary_table)
 cleaned_filename = "cleaned_nfl_play_by_play.csv"
 valid_plays.to_csv(cleaned_filename, index=False)
 print(f"\nCleaned dataset successfully saved to: {cleaned_filename}")
+
